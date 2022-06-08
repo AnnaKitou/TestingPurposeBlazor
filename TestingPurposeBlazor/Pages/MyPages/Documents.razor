@@ -1,0 +1,120 @@
+﻿@page "/Data/Documents"
+@using DataAccessLibrary
+@using DataAccessLibrary.Models
+@using System.Threading
+@using TestingPurposeBlazor.Models
+
+@inject IDocumentData _db
+
+<h1>Documents Page</h1>
+<br/>
+<h4>Current Document</h4>
+<br/>
+<h4>Insert new Document</h4>
+
+
+<EditForm Model="@newDocument" OnInvalidSubmit="@InsertDocument">
+    <DataAnnotationsValidator />
+    <ValidationSummary />
+    <InputText id="name" @bind-Value="newDocument.Name" />
+    <InputNumber id="statusCode" @bind-Value="newDocument.StatusCode" />
+    <InputNumber id="freeze" @bind-Value="newDocument.Freeze" />
+
+    <button type="submit" class="btn btn-primary">Submit</button>
+</EditForm>
+<br/>
+
+
+
+
+
+@if (documents is null)
+{
+    <p><em>Loading...</em></p>
+}
+else
+{   
+    <section class="search-input">
+        <label for="search"><h4>Search by Document Status Code (-1: All Documents)</h4></label>
+    <input type="number" id="search" class="form-control" placeholder="Search by Document Status Code (-1: All Documents)" 
+    @bind-value="@SearchTerm" @bind-value:event="oninput"
+    @onkeyup="SearchChanged"
+    />
+</section>
+    <table class="table table-striped">
+        <thead>
+            <tr>
+                <th>Name</th>
+                <th>Status Code</th>
+                <th>Freeze</th>
+            </tr>
+        </thead>
+        <tbody>
+            @foreach (var doc in documents)
+            {
+                <tr>
+                    <td>@doc.Name</td>
+                    <td>@doc.StatusCode</td>
+                    <td>@doc.Freeze</td>
+                </tr>
+            }
+        </tbody>
+    </table>
+}
+
+@code {
+    private List<DocumentModel> documents;
+
+    private DisplayDocumentModel newDocument = new DisplayDocumentModel();
+
+
+    public int SearchTerm { get; set; } = -1;
+    private Timer _timer;
+
+    [Parameter]
+    public EventCallback<Task<List<DocumentModel>>> OnSearchChanged { get; set; }
+
+    private void SearchChanged()
+    {
+        if (_timer != null)
+        {
+            _timer.Dispose();
+        }
+        _timer = new Timer(OnTimerElapsed, null, 100, 0);
+    }
+
+    private void OnTimerElapsed(object sender)
+    {
+        OnSearchChanged.InvokeAsync(SearchByTerm(SearchTerm));
+        _timer.Dispose();
+    }
+
+    protected override async Task OnInitializedAsync()
+    {
+        documents= await _db.GetDocuments();
+        //documents= await _db.SortDocument(SearchTerm);
+    }
+
+    private async Task InsertDocument()
+    {
+        DocumentModel d = new DocumentModel
+            {
+                Name = newDocument.Name,
+                StatusCode = newDocument.StatusCode,
+                Freeze = newDocument.Freeze
+            };
+        await _db.InsertDocument(d);
+
+        documents.Add(d);
+        newDocument = new DisplayDocumentModel();
+    }
+
+
+    public async Task<List<DocumentModel>> SearchByTerm(int searchTerm)
+    {
+        SearchTerm = searchTerm;
+        documents= await _db.SortDocument(SearchTerm);
+
+        return documents.ToList();
+    }
+}
