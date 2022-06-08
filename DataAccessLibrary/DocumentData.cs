@@ -1,5 +1,6 @@
 ﻿using Dapper;
 using DataAccessLibrary.Models;
+using Microsoft.AspNetCore.Mvc;
 using System;
 using System.Collections.Generic;
 using System.Data.SqlClient;
@@ -21,6 +22,7 @@ namespace DataAccessLibrary
         public Task<List<DocumentModel>> GetDocuments()
         {
             string sql = "select*from dbo.Documents order by id asc";
+
             return _db.LoadData<DocumentModel, dynamic>(sql, new { });
         }
 
